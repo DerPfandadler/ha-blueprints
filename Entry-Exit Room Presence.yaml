@@ -2,8 +2,11 @@ blueprint:
   name: Room Presence with Area Light Control
   description: >
     Monitors esphome entry/exit events for a designated area.
-    Turns lights on when someone enters and off when the room is empty.
+    Turns lights and additional entities on when someone enters and off when the room is empty.
   domain: automation
+  mode: queued  # ✅ Handles rapid events properly
+  max: 10       # ✅ Ensures up to 10 events are processed in order
+
   input:
     area:
       name: Room Area
@@ -22,6 +25,13 @@ blueprint:
       selector:
         entity:
           domain: input_boolean
+    additional_entities:
+      name: Additional Entities to Toggle
+      description: "Select extra entities (e.g., fans, switches) that should also turn on/off with the lights."
+      default: []
+      selector:
+        entity:
+          multiple: true
 
 trigger:
   - platform: event
@@ -33,6 +43,7 @@ variables:
   monitored_area: !input area
   counter: !input counter_entity
   presence: !input presence_entity
+  extra_entities: !input additional_entities
 
 condition:
   # Ensure the event's room matches the selected area name
@@ -54,7 +65,10 @@ action:
               entity_id: "{{ presence }}"
           - service: light.turn_on
             target:
-              area_id: !input area  # ✅ Turns on only lights in the selected area
+              area_id: !input area  # ✅ Turns on lights in the area
+          - service: homeassistant.turn_on  # ✅ Turns on additional entities
+            target:
+              entity_id: "{{ extra_entities }}"
 
       # When a person exits the room
       - conditions:
@@ -70,6 +84,9 @@ action:
           - service: input_boolean.turn_off
             target:
               entity_id: "{{ presence }}"
-          - service: light.turn_off  # ✅ Turns off only lights in the area
+          - service: light.turn_off  # ✅ Turns off lights in the area
             target:
               area_id: !input area
+          - service: homeassistant.turn_off  # ✅ Turns off additional entities
+            target:
+              entity_id: "{{ extra_entities }}"
