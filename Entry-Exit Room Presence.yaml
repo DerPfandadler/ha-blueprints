@@ -39,7 +39,7 @@ trigger:
 condition:
   # Only proceed if the event’s room matches the blueprint’s room name.
   - condition: template
-    value_template: "{{ trigger.event.data.room == blueprint.inputs.room_name }}"
+    value_template: "{{ trigger.event.data.room == inputs.room_name }}"
 
 action:
   - choose:
@@ -50,10 +50,10 @@ action:
         sequence:
           - service: counter.increment
             target:
-              entity_id: "{{ blueprint.inputs.counter_entity }}"
+              entity_id: "{{ inputs.counter_entity }}"
           - service: input_boolean.turn_on
             target:
-              entity_id: "{{ blueprint.inputs.presence_entity }}"
+              entity_id: "{{ inputs.presence_entity }}"
       # When an exit is detected:
       - conditions:
           - condition: template
@@ -61,16 +61,16 @@ action:
         sequence:
           - service: counter.decrement
             target:
-              entity_id: "{{ blueprint.inputs.counter_entity }}"
+              entity_id: "{{ inputs.counter_entity }}"
           # Allow a short delay for the counter to update.
-          - delay: "00:00:02"
+          - delay: "00:00:01"
           # Check if the counter indicates no one is in the room.
           - condition: template
-            value_template: "{{ states(blueprint.inputs.counter_entity)|int <= 0 }}"
+            value_template: "{{ states(inputs.counter_entity)|int <= 0 }}"
           - service: input_boolean.turn_off
             target:
-              entity_id: "{{ blueprint.inputs.presence_entity }}"
+              entity_id: "{{ inputs.presence_entity }}"
           # Turn off all lights in the designated area.
           - service: homeassistant.turn_off
             target:
-              area_id: "{{ blueprint.inputs.area }}"
+              area_id: "{{ inputs.area }}"
