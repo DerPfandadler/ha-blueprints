@@ -4,8 +4,6 @@ blueprint:
     Monitors esphome entry/exit events for a designated area.
     Turns lights and additional entities on when someone enters and off when the room is empty.
   domain: automation
-  mode: queued
-  max: 10
 
   input:
     area:
