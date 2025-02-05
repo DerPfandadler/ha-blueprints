@@ -5,7 +5,7 @@ blueprint:
     Turns lights and additional entities on when someone enters and off when the room is empty.
   domain: automation
   mode: queued  # ✅ Handles rapid events properly
-  max: 25       # ✅ Ensures up to 10 events are processed in order
+  max: 10       # ✅ Ensures up to 10 events are processed in order
 
   input:
     area:
