@@ -36,6 +36,9 @@ blueprint:
               - fan
               - climate  # ✅ Now supports extra entity types
 
+mode: queued
+max: 10
+
 trigger:
   - platform: event
     event_type: esphome.entry_detected
