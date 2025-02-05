@@ -5,7 +5,7 @@ blueprint:
     Turns lights and additional entities on when someone enters and off when the room is empty.
   domain: automation
   mode: queued  # ✅ Handles rapid events properly
-  max: 10       # ✅ Ensures up to 10 events are processed in order
+  max: 25       # ✅ Ensures up to 10 events are processed in order
 
   input:
     area:
@@ -27,11 +27,16 @@ blueprint:
           domain: input_boolean
     additional_entities:
       name: Additional Entities to Toggle
-      description: "Select extra entities (e.g., fans, switches) that should also turn on/off with the lights."
+      description: "Select extra entities (e.g., fans, switches, air purifiers) that should turn on/off with the lights."
       default: []
       selector:
         entity:
           multiple: true
+          filter:
+            domain:
+              - switch
+              - fan
+              - climate  # ✅ Now supports extra entity types
 
 trigger:
   - platform: event
@@ -66,9 +71,14 @@ action:
           - service: light.turn_on
             target:
               area_id: !input area  # ✅ Turns on lights in the area
-          - service: homeassistant.turn_on  # ✅ Turns on additional entities
-            target:
-              entity_id: "{{ extra_entities }}"
+          - choose:  # ✅ Only toggle extra entities if any were selected
+              - conditions:
+                  - condition: template
+                    value_template: "{{ extra_entities | count > 0 }}"
+                sequence:
+                  - service: homeassistant.turn_on
+                    target:
+                      entity_id: "{{ extra_entities }}"
 
       # When a person exits the room
       - conditions:
@@ -87,6 +97,11 @@ action:
           - service: light.turn_off  # ✅ Turns off lights in the area
             target:
               area_id: !input area
-          - service: homeassistant.turn_off  # ✅ Turns off additional entities
-            target:
-              entity_id: "{{ extra_entities }}"
+          - choose:  # ✅ Only toggle extra entities if any were selected
+              - conditions:
+                  - condition: template
+                    value_template: "{{ extra_entities | count > 0 }}"
+                sequence:
+                  - service: homeassistant.turn_off
+                    target:
+                      entity_id: "{{ extra_entities }}"
