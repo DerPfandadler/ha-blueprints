@@ -1,0 +1,76 @@
+blueprint:
+  name: Room Presence with Area Light Control
+  description: >
+    Monitors esphome entry/exit events for a designated room.
+    Increments/decrements a counter, sets a presence input_boolean,
+    and when the room is unoccupied turns off all lights in the specified area.
+  domain: automation
+  input:
+    room_name:
+      name: Room Name
+      description: "Name of the room to monitor. Must match the 'room' field in the events."
+      selector:
+        text:
+    counter_entity:
+      name: Counter Entity
+      description: "Counter entity tracking the number of people in the room."
+      selector:
+        entity:
+          domain: counter
+    presence_entity:
+      name: Presence Input Boolean
+      description: "Input boolean that represents the occupancy status of the room."
+      selector:
+        entity:
+          domain: input_boolean
+    area:
+      name: Area for Lights
+      description: "Area containing all lights that should be turned off when the room is unoccupied."
+      selector:
+        area: {}
+
+trigger:
+  # Listen for both entry and exit events.
+  - platform: event
+    event_type: esphome.entry_detected
+  - platform: event
+    event_type: esphome.exit_detected
+
+condition:
+  # Only proceed if the event’s room matches the blueprint’s room name.
+  - condition: template
+    value_template: "{{ trigger.event.data.room == blueprint.inputs.room_name }}"
+
+action:
+  - choose:
+      # When an entry is detected:
+      - conditions:
+          - condition: template
+            value_template: "{{ trigger.event.event_type == 'esphome.entry_detected' }}"
+        sequence:
+          - service: counter.increment
+            target:
+              entity_id: "{{ blueprint.inputs.counter_entity }}"
+          - service: input_boolean.turn_on
+            target:
+              entity_id: "{{ blueprint.inputs.presence_entity }}"
+      # When an exit is detected:
+      - conditions:
+          - condition: template
+            value_template: "{{ trigger.event.event_type == 'esphome.exit_detected' }}"
+        sequence:
+          - service: counter.decrement
+            target:
+              entity_id: "{{ blueprint.inputs.counter_entity }}"
+          # Allow a short delay for the counter to update.
+          - delay: "00:00:02"
+          # Check if the counter indicates no one is in the room.
+          - condition: template
+            value_template: "{{ states(blueprint.inputs.counter_entity)|int <= 0 }}"
+          - service: input_boolean.turn_off
+            target:
+              entity_id: "{{ blueprint.inputs.presence_entity }}"
+          # Turn off all lights in the designated area.
+          - service: homeassistant.turn_off
+            target:
+              area_id: "{{ blueprint.inputs.area }}"
