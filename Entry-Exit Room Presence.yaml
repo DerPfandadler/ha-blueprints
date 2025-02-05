@@ -1,33 +1,28 @@
 blueprint:
   name: Room Presence with Area Light Control
   description: >
-    Monitors esphome entry/exit events for a designated room.
+    Monitors esphome entry/exit events for a designated area.
     Increments/decrements a counter, sets a presence input_boolean,
-    and when the room is unoccupied turns off all lights in the specified area.
+    and when the room is unoccupied, turns off all lights in the specified area.
   domain: automation
   input:
-    room_name:
-      name: Room Name
-      description: "Name of the room to monitor. Must match the 'room' field in the events."
+    area:
+      name: Room Area
+      description: "The area to monitor for presence detection and control its lights."
       selector:
-        text:
+        area: {}
     counter_entity:
       name: Counter Entity
-      description: "Counter entity tracking the number of people in the room."
+      description: "Counter entity tracking the number of people in the area."
       selector:
         entity:
           domain: counter
     presence_entity:
       name: Presence Input Boolean
-      description: "Input boolean that represents the occupancy status of the room."
+      description: "Input boolean that represents the occupancy status of the area."
       selector:
         entity:
           domain: input_boolean
-    area:
-      name: Area for Lights
-      description: "Area containing all lights that should be turned off when the room is unoccupied."
-      selector:
-        area: {}
 
 trigger:
   - platform: event
@@ -35,10 +30,15 @@ trigger:
   - platform: event
     event_type: esphome.exit_detected
 
+variables:
+  monitored_area: !input area
+  counter: !input counter_entity
+  presence: !input presence_entity
+
 condition:
-  # Ensure that the event's room matches the blueprint-defined room.
+  # Ensure the event's room matches the selected area name
   - condition: template
-    value_template: "{{ trigger.event.data.room == (input_room_name) }}"
+    value_template: "{{ trigger.event.data.room == monitored_area }}"
 
 action:
   - choose:
@@ -48,23 +48,23 @@ action:
         sequence:
           - service: counter.increment
             target:
-              entity_id: !input counter_entity
+              entity_id: "{{ counter }}"
           - service: input_boolean.turn_on
             target:
-              entity_id: !input presence_entity
+              entity_id: "{{ presence }}"
       - conditions:
           - condition: template
             value_template: "{{ trigger.event.event_type == 'esphome.exit_detected' }}"
         sequence:
           - service: counter.decrement
             target:
-              entity_id: !input counter_entity
+              entity_id: "{{ counter }}"
           - delay: "00:00:01"
           - condition: template
-            value_template: "{{ states(input_counter_entity) | int <= 0 }}"
+            value_template: "{{ states(counter) | int <= 0 }}"
           - service: input_boolean.turn_off
             target:
-              entity_id: !input presence_entity
+              entity_id: "{{ presence }}"
           - service: homeassistant.turn_off
             target:
               area_id: !input area
