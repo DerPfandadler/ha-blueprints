@@ -2,8 +2,7 @@ blueprint:
   name: Room Presence with Area Light Control
   description: >
     Monitors esphome entry/exit events for a designated area.
-    Increments/decrements a counter, sets a presence input_boolean,
-    and when the room is unoccupied, turns off all lights in the specified area.
+    Turns lights on when someone enters and off when the room is empty.
   domain: automation
   input:
     area:
@@ -42,6 +41,7 @@ condition:
 
 action:
   - choose:
+      # When a person enters the room
       - conditions:
           - condition: template
             value_template: "{{ trigger.event.event_type == 'esphome.entry_detected' }}"
@@ -52,6 +52,11 @@ action:
           - service: input_boolean.turn_on
             target:
               entity_id: "{{ presence }}"
+          - service: light.turn_on
+            target:
+              area_id: !input area  # ✅ Turns on only lights in the selected area
+
+      # When a person exits the room
       - conditions:
           - condition: template
             value_template: "{{ trigger.event.event_type == 'esphome.exit_detected' }}"
@@ -65,6 +70,6 @@ action:
           - service: input_boolean.turn_off
             target:
               entity_id: "{{ presence }}"
-          - service: homeassistant.turn_off
+          - service: light.turn_off  # ✅ Turns off only lights in the area
             target:
               area_id: !input area
